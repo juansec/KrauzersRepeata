@@ -1,0 +1,15 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Base.Theme.KrauzersRepeater"
+        parent="Theme.Material3.DayNight.NoActionBar">
+
+        <item name="colorPrimary">@color/hacker_green</item>
+        <item name="colorSecondary">@color/hacker_green</item>
+        <item name="colorTertiary">@color/hacker_green_dark</item>
+
+    </style>
+
+    <style name="Theme.KrauzersRepeater"
+        parent="Base.Theme.KrauzersRepeater" />
+
+</resources>

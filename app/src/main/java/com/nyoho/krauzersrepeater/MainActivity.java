@@ -29,10 +29,19 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 import android.view.View;
+import okhttp3.ResponseBody;
+import java.nio.charset.StandardCharsets;
 import android.view.ViewGroup;
 
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final long MAX_RESPONSE_BYTES =
+            2L * 1024L * 1024L;
+
+    private static final int MAX_REQUEST_CHARS =
+            2 * 1024 * 1024;
+
     private EditText editRequest;
     private EditText editResponse;
     private final ActivityResultLauncher<String[]> filePicker =
@@ -40,24 +49,60 @@ public class MainActivity extends AppCompatActivity {
                     new ActivityResultContracts.OpenDocument(),
                     uri -> {
                         if (uri != null) {
-                            // Nyoho
-                            try {
-                                InputStream inputStream = getContentResolver().openInputStream(uri);
-                                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
 
-                                StringBuilder content = new StringBuilder();
-                                String line;
+                            try (
+                                    InputStream inputStream =
+                                            getContentResolver().openInputStream(uri)
+                            ) {
 
-                                while ((line = reader.readLine()) != null) {
-                                    content.append(line).append("\n");
+                                if (inputStream == null) {
+                                    throw new IOException(
+                                            "No se pudo abrir el archivo"
+                                    );
                                 }
 
-                                reader.close();
+                                BufferedReader reader =
+                                        new BufferedReader(
+                                                new InputStreamReader(
+                                                        inputStream,
+                                                        StandardCharsets.UTF_8
+                                                )
+                                        );
 
-                                editRequest.setText(content.toString());
+                                StringBuilder content =
+                                        new StringBuilder();
+
+                                char[] buffer = new char[8192];
+
+                                int read;
+
+                                while ((read = reader.read(buffer)) != -1) {
+
+                                    if (content.length() + read
+                                            > MAX_REQUEST_CHARS) {
+
+                                        throw new IOException(
+                                                "La request supera el límite de 2 MiB"
+                                        );
+                                    }
+
+                                    content.append(
+                                            buffer,
+                                            0,
+                                            read
+                                    );
+                                }
+
+                                editRequest.setText(
+                                        content.toString()
+                                );
 
                             } catch (IOException e) {
-                                e.printStackTrace();
+
+                                editResponse.setText(
+                                        "ERROR AL CARGAR ARCHIVO:\n"
+                                                + e.getMessage()
+                                );
                             }
                         }
                     }
@@ -110,8 +155,20 @@ public class MainActivity extends AppCompatActivity {
                             String responseBody = "";
 
                             if (res.body() != null) {
-                                responseBody = res.body().string();
 
+                                long originalLength =
+                                        res.body().contentLength();
+
+                                ResponseBody preview =
+                                        res.peekBody(MAX_RESPONSE_BYTES);
+
+                                responseBody = preview.string();
+
+                                if (originalLength > MAX_RESPONSE_BYTES) {
+
+                                    responseBody +=
+                                            "\n\n[RESPONSE TRUNCATED - límite de 2 MiB]";
+                                }
                             }
 
                             String finalResponse =

@@ -7,15 +7,40 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
+import java.util.concurrent.TimeUnit;
 
 public class HttpRequestSender {
 
-    private static final OkHttpClient client = new OkHttpClient();
+    private static final OkHttpClient client =
+            new OkHttpClient.Builder()
+
+
+                    .followRedirects(false)
+                    .followSslRedirects(false)
+
+
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(20, TimeUnit.SECONDS)
+                    .writeTimeout(20, TimeUnit.SECONDS)
+                    .callTimeout(30, TimeUnit.SECONDS)
+
+                    .build();
+
 
     public static void sendRequest(ParsedRequest parsed, boolean useHttps, Callback callback) {
 
         if (parsed.host == null || parsed.host.isEmpty()) {
             throw new IllegalArgumentException("Requesta sin host papu, nonas.");
+        }
+
+        if (parsed.host.matches(
+                ".*[\\s/@?#\\\\].*"
+        )) {
+
+            throw new IllegalArgumentException(
+                    "Host inválido: "
+                            + parsed.host
+            );
         }
 
         String scheme = useHttps ? "https://" : "http://";
